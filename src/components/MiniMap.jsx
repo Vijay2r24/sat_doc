@@ -143,15 +143,22 @@ const UnifiedScrollBar = ({ leftContainerId, rightContainerId }) => {
  
   /** Update viewport position */
   const updateViewport = useCallback(() => {
-    const { left } = getContainers();
-    if (!left) return;
+    const { left, right } = getContainers();
+    if (!left || !right) return;
  
-    const scrollTop = left.scrollTop;
-    const clientHeight = left.clientHeight;
-    const scrollHeight = left.scrollHeight;
+    // Use the average scroll position from both containers for better sync
+    const leftScrollRatio = left.scrollHeight > left.clientHeight ? 
+      left.scrollTop / (left.scrollHeight - left.clientHeight) : 0;
+    const rightScrollRatio = right.scrollHeight > right.clientHeight ? 
+      right.scrollTop / (right.scrollHeight - right.clientHeight) : 0;
+    
+    // Use the maximum scroll ratio to ensure viewport shows the furthest scrolled position
+    const scrollRatio = Math.max(leftScrollRatio, rightScrollRatio);
+    const avgScrollHeight = Math.max(left.scrollHeight, right.scrollHeight);
+    const avgClientHeight = Math.min(left.clientHeight, right.clientHeight);
  
-    const topPercentage = (scrollTop / scrollHeight) * 100;
-    const heightPercentage = (clientHeight / scrollHeight) * 100;
+    const topPercentage = scrollRatio * 100;
+    const heightPercentage = (avgClientHeight / avgScrollHeight) * 100;
  
     setViewport({
       top: topPercentage,
@@ -180,8 +187,9 @@ const UnifiedScrollBar = ({ leftContainerId, rightContainerId }) => {
  
     refresh();
  
-    // Only listen to left container for viewport updates to avoid conflicts
+    // Listen to both containers for viewport updates
     left.addEventListener('scroll', updateViewport, { passive: true });
+    right.addEventListener('scroll', updateViewport, { passive: true });
  
     const observer = new MutationObserver(refresh);
     observer.observe(left, { childList: true, subtree: true });
@@ -191,6 +199,7 @@ const UnifiedScrollBar = ({ leftContainerId, rightContainerId }) => {
  
     return () => {
       left.removeEventListener('scroll', updateViewport);
+      right.removeEventListener('scroll', updateViewport);
       observer.disconnect();
       window.removeEventListener('resize', refresh);
     };
@@ -199,7 +208,7 @@ const UnifiedScrollBar = ({ leftContainerId, rightContainerId }) => {
   return (
     <div
       ref={barRef}
-      className={`relative w-6 h-full bg-gray-100 rounded-md cursor-pointer select-none ${
+      className={`relative w-12 h-full bg-gray-100 rounded-md cursor-pointer select-none border border-gray-300 ${
         isDragging ? 'cursor-grabbing' : 'cursor-grab'
       }`}
       onClick={handleBarClick}
@@ -210,10 +219,10 @@ const UnifiedScrollBar = ({ leftContainerId, rightContainerId }) => {
         <div
           key={i}
           onClick={() => scrollToElement(m.element)}
-          className="absolute left-1 right-1 rounded-sm cursor-pointer hover:opacity-100"
+          className="absolute left-2 right-2 rounded-sm cursor-pointer hover:opacity-100 transition-opacity"
           style={{
             top: `${m.ratio * 100}%`,
-            height: '3px',
+            height: '4px',
             backgroundColor: m.color,
             opacity: 0.9
           }}
@@ -222,7 +231,7 @@ const UnifiedScrollBar = ({ leftContainerId, rightContainerId }) => {
  
       {/* Viewport indicator */}
       <div
-        className={`absolute left-0 right-0 border-2 border-blue-500 bg-blue-400/20 rounded-sm pointer-events-none ${
+        className={`absolute left-1 right-1 border-2 border-blue-500 bg-blue-400/20 rounded-sm pointer-events-none ${
           isDragging ? 'bg-blue-500/30' : ''
         }`}
         style={{
