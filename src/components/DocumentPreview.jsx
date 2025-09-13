@@ -9,7 +9,7 @@ const DocumentPreview = ({ document, diffs, title, containerId }) => {
 
   // Handle scroll synchronization between containers
   useEffect(() => {
-    if (!containerRef.current || !containerId || diffs) return; // Disable sync when showing diffs
+    if (!containerRef.current || !containerId) return;
 
     const container = containerRef.current;
     let isSyncing = false;
@@ -47,12 +47,12 @@ const DocumentPreview = ({ document, diffs, title, containerId }) => {
       }
     };
 
-    container.addEventListener('scroll', handleScroll, { passive: false });
+    container.addEventListener('scroll', handleScroll, { passive: true });
 
     return () => {
       container.removeEventListener('scroll', handleScroll);
     };
-  }, [containerId, diffs]);
+  }, [containerId]);
 
   // Auto-scale content to fit container width while preserving proportions
   useEffect(() => {
